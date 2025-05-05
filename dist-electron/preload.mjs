@@ -2,6 +2,7 @@
 const electron = require("electron");
 electron.contextBridge.exposeInMainWorld("electronAPI", {
   getHostname: () => electron.ipcRenderer.invoke("get-hostname"),
+  minimizeToTray: () => electron.ipcRenderer.send("minimize-to-tray"),
   ipcRenderer: {
     on(...args) {
       const [channel, listener] = args;

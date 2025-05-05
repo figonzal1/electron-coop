@@ -1,7 +1,8 @@
 import { createRoot } from "react-dom/client";
+import { StrictMode, useEffect } from "react";
+
 import "../src/styles/index.css";
 import background from "./assets/wavy-lines.svg";
-import { StrictMode, useEffect } from "react";
 
 function App() {
   useEffect(() => {

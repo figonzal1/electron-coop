@@ -23,6 +23,7 @@ declare namespace NodeJS {
 
 interface ElectronAPI {
   getHostname: () => Promise<string>;
+  minimizeToTray: () => Promise<void>;
 
   ipcRenderer: {
     on: typeof import("electron").ipcRenderer.on;

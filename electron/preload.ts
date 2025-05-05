@@ -2,6 +2,7 @@ import { ipcRenderer, contextBridge } from "electron";
 
 contextBridge.exposeInMainWorld("electronAPI", {
   getHostname: () => ipcRenderer.invoke("get-hostname"),
+  minimizeToTray: () => ipcRenderer.send("minimize-to-tray"),
 
   ipcRenderer: {
     on(...args: Parameters<typeof ipcRenderer.on>) {
