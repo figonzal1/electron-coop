@@ -15,13 +15,23 @@ declare namespace NodeJS {
      * │
      * ```
      */
-    APP_ROOT: string
+    APP_ROOT: string;
     /** /dist/ or /public/ */
-    VITE_PUBLIC: string
+    VITE_PUBLIC: string;
   }
 }
 
-// Used in Renderer process, expose in `preload.ts`
+interface ElectronAPI {
+  getHostname: () => Promise<string>;
+
+  ipcRenderer: {
+    on: typeof import("electron").ipcRenderer.on;
+    off: typeof import("electron").ipcRenderer.off;
+    send: typeof import("electron").ipcRenderer.send;
+    invoke: typeof import("electron").ipcRenderer.invoke;
+  };
+}
+
 interface Window {
-  ipcRenderer: import('electron').IpcRenderer
+  electronAPI: ElectronAPI;
 }

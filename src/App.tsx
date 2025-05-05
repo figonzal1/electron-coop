@@ -1,35 +1,35 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/electron-vite.animate.svg'
-import './App.css'
+import { createRoot } from "react-dom/client";
+import "../src/styles/index.css";
+import background from "./assets/wavy-lines.svg";
+import { StrictMode, useEffect } from "react";
 
 function App() {
-  const [count, setCount] = useState(0)
+  useEffect(() => {
+    const fetchHostname = async () => {
+      try {
+        const hostname = await window.electronAPI.getHostname();
+        console.log("Nombre del PC:", hostname);
+      } catch (error) {
+        console.error("Error al obtener el nombre del PC:", error);
+      }
+    };
+
+    fetchHostname();
+  }, []);
 
   return (
-    <>
-      <div>
-        <a href="https://electron-vite.github.io" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="min-h-screen h-full w-full bg-[#282828]">
+      <img src={background} alt="background" className="fixed" />
+
+      <div className="flex flex-col justify-center items-center  min-h-screen">
+        <h1>Vite + React</h1>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    </div>
+  );
 }
 
-export default App
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+);
