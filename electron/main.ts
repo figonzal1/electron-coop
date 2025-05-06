@@ -1,4 +1,12 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, Tray } from "electron";
+import {
+  app,
+  BrowserWindow,
+  globalShortcut,
+  ipcMain,
+  Menu,
+  nativeImage,
+  Tray,
+} from "electron";
 //import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -66,12 +74,15 @@ function restartPopupTimer() {
   }
 
   if (!mainWin?.isVisible()) {
-    popupInterval = setInterval(() => {
-      if (!popupWindow && !mainWin?.isVisible()) {
-        // Doble verificación
-        createPopup();
-      }
-    }, 1000 * 60 * 1); // cada 1 minuto
+    popupInterval = setInterval(
+      () => {
+        if (!popupWindow && !mainWin?.isVisible()) {
+          // Doble verificación
+          createPopup();
+        }
+      },
+      1000 * 60 * 1,
+    ); // cada 1 minuto
   }
 }
 
@@ -193,7 +204,7 @@ function createWindow() {
   mainWin.webContents.on("did-finish-load", () => {
     mainWin?.webContents.send(
       "main-process-message",
-      new Date().toLocaleString()
+      new Date().toLocaleString(),
     );
   });
 
@@ -202,6 +213,10 @@ function createWindow() {
       clearInterval(popupInterval);
       popupInterval = null;
     }
+  });
+
+  mainWin.on("close", (e) => {
+    e.preventDefault();
   });
 
   mainWin.webContents.on("before-input-event", (event, input) => {
@@ -266,37 +281,37 @@ app.whenReady().then(() => {
   });
 
   const BLOCKED_SHORTCUTS = [
-    'CommandOrControl+Alt+Delete',
-    'CommandOrControl+Shift+Esc',
-    'Alt+F4',
-    'CommandOrControl+W',
-    'CommandOrControl+R',
-    'CommandOrControl+T',
-    'CommandOrControl+N',
-    'F5',
-    'F11',
-    'F12',
-    'Alt+Tab',
-    'CommandOrControl+Tab',
-    'Escape',
-    'Super', // Tecla Windows/Command
-    'Super+L', // Bloquear Windows
-    'Super+D', // Mostrar escritorio
-    'Super+R', // Ejecutar
-    'Super+Tab' // Selector de aplicaciones
-  ]
+    "CommandOrControl+Alt+Delete",
+    "CommandOrControl+Shift+Esc",
+    "Alt+F4",
+    "CommandOrControl+W",
+    "CommandOrControl+R",
+    "CommandOrControl+T",
+    "CommandOrControl+N",
+    "F5",
+    "F11",
+    "F12",
+    "Alt+Tab",
+    "CommandOrControl+Tab",
+    "Escape",
+    "Super", // Tecla Windows/Command
+    "Super+L", // Bloquear Windows
+    "Super+D", // Mostrar escritorio
+    "Super+R", // Ejecutar
+    "Super+Tab", // Selector de aplicaciones
+  ];
 
   BLOCKED_SHORTCUTS.forEach((shortcut) => {
     try {
       if (
         !globalShortcut.register(shortcut, () => {
-          console.log(`Shortcut blocked: ${shortcut}`)
+          console.log(`Shortcut blocked: ${shortcut}`);
         })
       ) {
-        console.error(`Failed to block: ${shortcut}`)
+        console.error(`Failed to block: ${shortcut}`);
       }
     } catch (error) {
-      console.error(`Error blocking ${shortcut}:`, error)
+      console.error(`Error blocking ${shortcut}:`, error);
     }
-  })
+  });
 });

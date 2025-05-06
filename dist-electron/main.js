@@ -1,4 +1,12 @@
-import { app, BrowserWindow, ipcMain, globalShortcut, nativeImage, Tray, Menu } from "electron";
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  globalShortcut,
+  nativeImage,
+  Tray,
+  Menu,
+} from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import os from "os";
@@ -7,7 +15,9 @@ process.env.APP_ROOT = path.join(__dirname, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
 const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
+process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
+  ? path.join(process.env.APP_ROOT, "public")
+  : RENDERER_DIST;
 let mainWin;
 let tray = null;
 let popupWindow = null;
@@ -38,11 +48,14 @@ function restartPopupTimer() {
     popupInterval = null;
   }
   if (!(mainWin == null ? void 0 : mainWin.isVisible())) {
-    popupInterval = setInterval(() => {
-      if (!popupWindow && !(mainWin == null ? void 0 : mainWin.isVisible())) {
-        createPopup();
-      }
-    }, 1e3 * 60 * 1);
+    popupInterval = setInterval(
+      () => {
+        if (!popupWindow && !(mainWin == null ? void 0 : mainWin.isVisible())) {
+          createPopup();
+        }
+      },
+      1e3 * 60 * 1,
+    );
   }
 }
 function createTray(iconPath) {
@@ -57,12 +70,12 @@ function createTray(iconPath) {
         } else {
           createWindow();
         }
-      }
+      },
     },
     {
       label: "Cerrar",
-      enabled: false
-    }
+      enabled: false,
+    },
   ]);
   tray.setToolTip(app.name);
   tray.setContextMenu(contextMenu);
@@ -83,8 +96,8 @@ function createPopup() {
     skipTaskbar: false,
     kiosk: false,
     webPreferences: {
-      preload: path.join(__dirname, "preload.mjs")
-    }
+      preload: path.join(__dirname, "preload.mjs"),
+    },
   });
   if (!ipcMain.listenerCount("close-popup")) {
     setupPopupListeners();
@@ -127,9 +140,12 @@ function createWindow() {
     "Home",
     "End",
     "PageUp",
-    "PageDown"
+    "PageDown",
   ]);
-  const iconPath = process.platform === "win32" ? path.join(process.env.VITE_PUBLIC, "electron-vite.ico") : path.join(process.env.VITE_PUBLIC, "electron-vite.png");
+  const iconPath =
+    process.platform === "win32"
+      ? path.join(process.env.VITE_PUBLIC, "electron-vite.ico")
+      : path.join(process.env.VITE_PUBLIC, "electron-vite.png");
   mainWin = new BrowserWindow({
     width: 1280,
     height: 720,
@@ -141,20 +157,25 @@ function createWindow() {
     frame: false,
     icon: iconPath,
     webPreferences: {
-      preload: path.join(__dirname, "preload.mjs")
-    }
+      preload: path.join(__dirname, "preload.mjs"),
+    },
   });
   mainWin.webContents.on("did-finish-load", () => {
-    mainWin == null ? void 0 : mainWin.webContents.send(
-      "main-process-message",
-      (/* @__PURE__ */ new Date()).toLocaleString()
-    );
+    mainWin == null
+      ? void 0
+      : mainWin.webContents.send(
+          "main-process-message",
+          /* @__PURE__ */ new Date().toLocaleString(),
+        );
   });
   mainWin.on("show", () => {
     if (popupInterval) {
       clearInterval(popupInterval);
       popupInterval = null;
     }
+  });
+  mainWin.on("close", (e) => {
+    e.preventDefault();
   });
   mainWin.webContents.on("before-input-event", (event, input) => {
     if (BLOCKED_KEYS.has(input.key)) {
@@ -220,14 +241,16 @@ app.whenReady().then(() => {
     // Mostrar escritorio
     "Super+R",
     // Ejecutar
-    "Super+Tab"
+    "Super+Tab",
     // Selector de aplicaciones
   ];
   BLOCKED_SHORTCUTS.forEach((shortcut) => {
     try {
-      if (!globalShortcut.register(shortcut, () => {
-        console.log(`Shortcut blocked: ${shortcut}`);
-      })) {
+      if (
+        !globalShortcut.register(shortcut, () => {
+          console.log(`Shortcut blocked: ${shortcut}`);
+        })
+      ) {
         console.error(`Failed to block: ${shortcut}`);
       }
     } catch (error) {
@@ -235,8 +258,4 @@ app.whenReady().then(() => {
     }
   });
 });
-export {
-  MAIN_DIST,
-  RENDERER_DIST,
-  VITE_DEV_SERVER_URL
-};
+export { MAIN_DIST, RENDERER_DIST, VITE_DEV_SERVER_URL };

@@ -6,9 +6,8 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   ipcRenderer: {
     on(...args) {
       const [channel, listener] = args;
-      return electron.ipcRenderer.on(
-        channel,
-        (event, ...args2) => listener(event, ...args2)
+      return electron.ipcRenderer.on(channel, (event, ...args2) =>
+        listener(event, ...args2),
       );
     },
     off(...args) {
@@ -22,6 +21,6 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
     invoke(...args) {
       const [channel, ...omit] = args;
       return electron.ipcRenderer.invoke(channel, ...omit);
-    }
-  }
+    },
+  },
 });
