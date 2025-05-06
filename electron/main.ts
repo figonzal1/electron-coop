@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, Tray } from "electron";
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, Tray } from "electron";
 //import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -138,20 +138,51 @@ function createPopup() {
 }
 
 function createWindow() {
+  const BLOCKED_KEYS = new Set([
+    "F1",
+    "F2",
+    "F3",
+    "F4",
+    "F5",
+    "F6",
+    "F7",
+    "F8",
+    "F9",
+    "F10",
+    "F11",
+    "F12",
+    "Escape",
+    "Alt",
+    "Meta",
+    "OS",
+    "Super",
+    "Hyper",
+    "Tab",
+    "PrintScreen",
+    "ScrollLock",
+    "Pause",
+    "Insert",
+    "Delete",
+    "Home",
+    "End",
+    "PageUp",
+    "PageDown",
+  ]);
 
-  const iconPath = process.platform === 'win32' 
-  ? path.join(process.env.VITE_PUBLIC, 'electron-vite.ico')
-  : path.join(process.env.VITE_PUBLIC, 'electron-vite.png');
+  const iconPath =
+    process.platform === "win32"
+      ? path.join(process.env.VITE_PUBLIC, "electron-vite.ico")
+      : path.join(process.env.VITE_PUBLIC, "electron-vite.png");
 
   mainWin = new BrowserWindow({
     width: 1280,
     height: 720,
     show: true,
-    kiosk: false,
-    alwaysOnTop: false,
-    fullscreen: false,
+    kiosk: true,
+    alwaysOnTop: true,
+    fullscreen: true,
     autoHideMenuBar: true,
-    frame: true,
+    frame: false,
     icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
@@ -170,6 +201,24 @@ function createWindow() {
     if (popupInterval) {
       clearInterval(popupInterval);
       popupInterval = null;
+    }
+  });
+
+  mainWin.webContents.on("before-input-event", (event, input) => {
+    // Bloquear teclas específicas
+    if (BLOCKED_KEYS.has(input.key)) {
+      event.preventDefault();
+      return;
+    }
+
+    // Bloquear combinaciones con modificadores
+    if (input.control || input.alt || input.meta || input.shift) {
+      event.preventDefault();
+    }
+
+    // Bloqueo especial para Alt (para evitar menús de acceso)
+    if (input.key === "Alt" && !input.alt) {
+      event.preventDefault();
     }
   });
 
@@ -215,4 +264,39 @@ app.whenReady().then(() => {
   ipcMain.on("restore-from-tray", () => {
     mainWin?.show();
   });
+
+  const BLOCKED_SHORTCUTS = [
+    'CommandOrControl+Alt+Delete',
+    'CommandOrControl+Shift+Esc',
+    'Alt+F4',
+    'CommandOrControl+W',
+    'CommandOrControl+R',
+    'CommandOrControl+T',
+    'CommandOrControl+N',
+    'F5',
+    'F11',
+    'F12',
+    'Alt+Tab',
+    'CommandOrControl+Tab',
+    'Escape',
+    'Super', // Tecla Windows/Command
+    'Super+L', // Bloquear Windows
+    'Super+D', // Mostrar escritorio
+    'Super+R', // Ejecutar
+    'Super+Tab' // Selector de aplicaciones
+  ]
+
+  BLOCKED_SHORTCUTS.forEach((shortcut) => {
+    try {
+      if (
+        !globalShortcut.register(shortcut, () => {
+          console.log(`Shortcut blocked: ${shortcut}`)
+        })
+      ) {
+        console.error(`Failed to block: ${shortcut}`)
+      }
+    } catch (error) {
+      console.error(`Error blocking ${shortcut}:`, error)
+    }
+  })
 });

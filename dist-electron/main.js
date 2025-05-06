@@ -1,99 +1,242 @@
-import { app as n, BrowserWindow as c, ipcMain as s, nativeImage as P, Tray as T, Menu as v } from "electron";
-import { fileURLToPath as _ } from "node:url";
-import o from "node:path";
-import I from "os";
-const u = o.dirname(_(import.meta.url));
-process.env.APP_ROOT = o.join(u, "..");
-const a = process.env.VITE_DEV_SERVER_URL, O = o.join(process.env.APP_ROOT, "dist-electron"), f = o.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = a ? o.join(process.env.APP_ROOT, "public") : f;
-let e, p = null, t = null, l = null;
-function h() {
-  s.removeAllListeners("close-popup"), s.on("close-popup", (r, { closedByUser: i }) => {
-    console.log(`Popup cerrado por ${i ? "usuario" : "timeout"}`), R(), e != null && e.isVisible() || w(), i || e == null || e.show();
+import { app, BrowserWindow, ipcMain, globalShortcut, nativeImage, Tray, Menu } from "electron";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import os from "os";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+process.env.APP_ROOT = path.join(__dirname, "..");
+const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
+const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
+const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
+let mainWin;
+let tray = null;
+let popupWindow = null;
+let popupInterval = null;
+function setupPopupListeners() {
+  ipcMain.removeAllListeners("close-popup");
+  ipcMain.on("close-popup", (_, { closedByUser }) => {
+    console.log(`Popup cerrado por ${closedByUser ? "usuario" : "timeout"}`);
+    closePopup();
+    if (!(mainWin == null ? void 0 : mainWin.isVisible())) {
+      restartPopupTimer();
+    }
+    if (!closedByUser) {
+      mainWin == null ? void 0 : mainWin.show();
+    }
   });
 }
-function R() {
-  t && (t.close(), t = null);
+function closePopup() {
+  if (popupWindow) {
+    popupWindow.close();
+    popupWindow = null;
+  }
 }
-function w() {
-  console.log("Restarting popup timer"), l && (clearInterval(l), l = null), e != null && e.isVisible() || (l = setInterval(() => {
-    !t && !(e != null && e.isVisible()) && E();
-  }, 1e3 * 60 * 1));
+function restartPopupTimer() {
+  console.log("Restarting popup timer");
+  if (popupInterval) {
+    clearInterval(popupInterval);
+    popupInterval = null;
+  }
+  if (!(mainWin == null ? void 0 : mainWin.isVisible())) {
+    popupInterval = setInterval(() => {
+      if (!popupWindow && !(mainWin == null ? void 0 : mainWin.isVisible())) {
+        createPopup();
+      }
+    }, 1e3 * 60 * 1);
+  }
 }
-function b(r) {
-  const i = P.createFromPath(r);
-  p = new T(i);
-  const m = v.buildFromTemplate([
+function createTray(iconPath) {
+  const icon = nativeImage.createFromPath(iconPath);
+  tray = new Tray(icon);
+  const contextMenu = Menu.buildFromTemplate([
     {
       label: "Abrir",
       click: () => {
-        e ? e.show() : d();
+        if (mainWin) {
+          mainWin.show();
+        } else {
+          createWindow();
+        }
       }
     },
     {
       label: "Cerrar",
-      enabled: !1
+      enabled: false
     }
   ]);
-  p.setToolTip(n.name), p.setContextMenu(m), p.on("double-click", () => {
-    e && e.show();
+  tray.setToolTip(app.name);
+  tray.setContextMenu(contextMenu);
+  tray.on("double-click", () => {
+    if (mainWin) {
+      mainWin.show();
+    }
   });
 }
-function E() {
-  t || (t = new c({
+function createPopup() {
+  if (popupWindow) return;
+  popupWindow = new BrowserWindow({
     width: 400,
     height: 200,
-    fullscreen: !1,
-    alwaysOnTop: !0,
-    frame: !1,
-    skipTaskbar: !1,
-    kiosk: !1,
+    fullscreen: false,
+    alwaysOnTop: true,
+    frame: false,
+    skipTaskbar: false,
+    kiosk: false,
     webPreferences: {
-      preload: o.join(u, "preload.mjs")
+      preload: path.join(__dirname, "preload.mjs")
     }
-  }), s.listenerCount("close-popup") || h(), a ? t.loadURL("http://localhost:5173/popup.html") : t.loadFile(o.join(f, "popup.html")), t.on("closed", () => {
-    t = null;
-  }));
+  });
+  if (!ipcMain.listenerCount("close-popup")) {
+    setupPopupListeners();
+  }
+  if (VITE_DEV_SERVER_URL) {
+    popupWindow.loadURL("http://localhost:5173/popup.html");
+  } else {
+    popupWindow.loadFile(path.join(RENDERER_DIST, "popup.html"));
+  }
+  popupWindow.on("closed", () => {
+    popupWindow = null;
+  });
 }
-function d() {
-  const r = process.platform === "win32" ? o.join(process.env.VITE_PUBLIC, "electron-vite.ico") : o.join(process.env.VITE_PUBLIC, "electron-vite.png");
-  e = new c({
+function createWindow() {
+  const BLOCKED_KEYS = /* @__PURE__ */ new Set([
+    "F1",
+    "F2",
+    "F3",
+    "F4",
+    "F5",
+    "F6",
+    "F7",
+    "F8",
+    "F9",
+    "F10",
+    "F11",
+    "F12",
+    "Escape",
+    "Alt",
+    "Meta",
+    "OS",
+    "Super",
+    "Hyper",
+    "Tab",
+    "PrintScreen",
+    "ScrollLock",
+    "Pause",
+    "Insert",
+    "Delete",
+    "Home",
+    "End",
+    "PageUp",
+    "PageDown"
+  ]);
+  const iconPath = process.platform === "win32" ? path.join(process.env.VITE_PUBLIC, "electron-vite.ico") : path.join(process.env.VITE_PUBLIC, "electron-vite.png");
+  mainWin = new BrowserWindow({
     width: 1280,
     height: 720,
-    show: !0,
-    kiosk: !1,
-    alwaysOnTop: !1,
-    fullscreen: !1,
-    autoHideMenuBar: !0,
-    frame: !0,
-    icon: r,
+    show: true,
+    kiosk: true,
+    alwaysOnTop: true,
+    fullscreen: true,
+    autoHideMenuBar: true,
+    frame: false,
+    icon: iconPath,
     webPreferences: {
-      preload: o.join(u, "preload.mjs")
+      preload: path.join(__dirname, "preload.mjs")
     }
-  }), e.webContents.on("did-finish-load", () => {
-    e == null || e.webContents.send(
+  });
+  mainWin.webContents.on("did-finish-load", () => {
+    mainWin == null ? void 0 : mainWin.webContents.send(
       "main-process-message",
       (/* @__PURE__ */ new Date()).toLocaleString()
     );
-  }), e.on("show", () => {
-    l && (clearInterval(l), l = null);
-  }), a ? e.loadURL(a) : e.loadFile(o.join(f, "index.html"));
+  });
+  mainWin.on("show", () => {
+    if (popupInterval) {
+      clearInterval(popupInterval);
+      popupInterval = null;
+    }
+  });
+  mainWin.webContents.on("before-input-event", (event, input) => {
+    if (BLOCKED_KEYS.has(input.key)) {
+      event.preventDefault();
+      return;
+    }
+    if (input.control || input.alt || input.meta || input.shift) {
+      event.preventDefault();
+    }
+    if (input.key === "Alt" && !input.alt) {
+      event.preventDefault();
+    }
+  });
+  if (VITE_DEV_SERVER_URL) {
+    mainWin.loadURL(VITE_DEV_SERVER_URL);
+  } else {
+    mainWin.loadFile(path.join(RENDERER_DIST, "index.html"));
+  }
 }
-n.on("window-all-closed", () => {
-  process.platform !== "darwin" && (n.quit(), e = null);
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    app.quit();
+    mainWin = null;
+  }
 });
-n.on("activate", () => {
-  c.getAllWindows().length === 0 && d();
+app.on("activate", () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
 });
-n.whenReady().then(() => {
-  d(), b(o.join(process.env.VITE_PUBLIC, "electron-vite.png")), h(), s.handle("get-hostname", () => I.hostname()), s.on("minimize-to-tray", () => {
-    console.log("Llamando minimize-to-tray"), e == null || e.hide(), w();
-  }), s.on("restore-from-tray", () => {
-    e == null || e.show();
+app.whenReady().then(() => {
+  createWindow();
+  createTray(path.join(process.env.VITE_PUBLIC, "electron-vite.png"));
+  setupPopupListeners();
+  ipcMain.handle("get-hostname", () => os.hostname());
+  ipcMain.on("minimize-to-tray", () => {
+    console.log("Llamando minimize-to-tray");
+    mainWin == null ? void 0 : mainWin.hide();
+    restartPopupTimer();
+  });
+  ipcMain.on("restore-from-tray", () => {
+    mainWin == null ? void 0 : mainWin.show();
+  });
+  const BLOCKED_SHORTCUTS = [
+    "CommandOrControl+Alt+Delete",
+    "CommandOrControl+Shift+Esc",
+    "Alt+F4",
+    "CommandOrControl+W",
+    "CommandOrControl+R",
+    "CommandOrControl+T",
+    "CommandOrControl+N",
+    "F5",
+    "F11",
+    "F12",
+    "Alt+Tab",
+    "CommandOrControl+Tab",
+    "Escape",
+    "Super",
+    // Tecla Windows/Command
+    "Super+L",
+    // Bloquear Windows
+    "Super+D",
+    // Mostrar escritorio
+    "Super+R",
+    // Ejecutar
+    "Super+Tab"
+    // Selector de aplicaciones
+  ];
+  BLOCKED_SHORTCUTS.forEach((shortcut) => {
+    try {
+      if (!globalShortcut.register(shortcut, () => {
+        console.log(`Shortcut blocked: ${shortcut}`);
+      })) {
+        console.error(`Failed to block: ${shortcut}`);
+      }
+    } catch (error) {
+      console.error(`Error blocking ${shortcut}:`, error);
+    }
   });
 });
 export {
-  O as MAIN_DIST,
-  f as RENDERER_DIST,
-  a as VITE_DEV_SERVER_URL
+  MAIN_DIST,
+  RENDERER_DIST,
+  VITE_DEV_SERVER_URL
 };
