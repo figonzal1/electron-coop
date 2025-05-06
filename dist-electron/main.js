@@ -1,163 +1,99 @@
-import { app, BrowserWindow, ipcMain, nativeImage, Tray, Menu } from "electron";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-import os from "os";
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-process.env.APP_ROOT = path.join(__dirname, "..");
-const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
-const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
-const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
-let mainWin;
-let tray = null;
-let popupWindow = null;
-let popupInterval = null;
-function setupPopupListeners() {
-  ipcMain.removeAllListeners("close-popup");
-  ipcMain.on("close-popup", (event, { closedByUser }) => {
-    console.log(`Popup cerrado por ${closedByUser ? "usuario" : "timeout"}`);
-    closePopup();
-    if (!(mainWin == null ? void 0 : mainWin.isVisible())) {
-      restartPopupTimer();
-    }
-    if (!closedByUser) {
-      mainWin == null ? void 0 : mainWin.show();
-    }
+import { app as n, BrowserWindow as c, ipcMain as s, nativeImage as P, Tray as T, Menu as v } from "electron";
+import { fileURLToPath as _ } from "node:url";
+import o from "node:path";
+import I from "os";
+const u = o.dirname(_(import.meta.url));
+process.env.APP_ROOT = o.join(u, "..");
+const a = process.env.VITE_DEV_SERVER_URL, O = o.join(process.env.APP_ROOT, "dist-electron"), f = o.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = a ? o.join(process.env.APP_ROOT, "public") : f;
+let e, p = null, t = null, l = null;
+function h() {
+  s.removeAllListeners("close-popup"), s.on("close-popup", (r, { closedByUser: i }) => {
+    console.log(`Popup cerrado por ${i ? "usuario" : "timeout"}`), R(), e != null && e.isVisible() || w(), i || e == null || e.show();
   });
 }
-function closePopup() {
-  if (popupWindow) {
-    popupWindow.close();
-    popupWindow = null;
-  }
+function R() {
+  t && (t.close(), t = null);
 }
-function restartPopupTimer() {
-  console.log("Restarting popup timer");
-  if (popupInterval) {
-    clearInterval(popupInterval);
-    popupInterval = null;
-  }
-  if (!(mainWin == null ? void 0 : mainWin.isVisible())) {
-    popupInterval = setInterval(() => {
-      if (!popupWindow && !(mainWin == null ? void 0 : mainWin.isVisible())) {
-        createPopup();
-      }
-    }, 1e3 * 60 * 1);
-  }
+function w() {
+  console.log("Restarting popup timer"), l && (clearInterval(l), l = null), e != null && e.isVisible() || (l = setInterval(() => {
+    !t && !(e != null && e.isVisible()) && E();
+  }, 1e3 * 60 * 1));
 }
-function createTray(iconPath) {
-  const icon = nativeImage.createFromPath(iconPath);
-  tray = new Tray(icon);
-  const contextMenu = Menu.buildFromTemplate([
+function b(r) {
+  const i = P.createFromPath(r);
+  p = new T(i);
+  const m = v.buildFromTemplate([
     {
       label: "Abrir",
       click: () => {
-        if (mainWin) {
-          mainWin.show();
-        } else {
-          createWindow();
-        }
+        e ? e.show() : d();
       }
     },
     {
       label: "Cerrar",
-      enabled: false
+      enabled: !1
     }
   ]);
-  tray.setToolTip(app.name);
-  tray.setContextMenu(contextMenu);
-  tray.on("double-click", () => {
-    if (mainWin) {
-      mainWin.show();
-    }
+  p.setToolTip(n.name), p.setContextMenu(m), p.on("double-click", () => {
+    e && e.show();
   });
 }
-function createPopup() {
-  if (popupWindow) return;
-  popupWindow = new BrowserWindow({
+function E() {
+  t || (t = new c({
     width: 400,
     height: 200,
-    fullscreen: false,
-    alwaysOnTop: true,
-    frame: false,
-    skipTaskbar: false,
-    kiosk: false,
+    fullscreen: !1,
+    alwaysOnTop: !0,
+    frame: !1,
+    skipTaskbar: !1,
+    kiosk: !1,
     webPreferences: {
-      preload: path.join(__dirname, "preload.mjs")
+      preload: o.join(u, "preload.mjs")
     }
-  });
-  if (!ipcMain.listenerCount("close-popup")) {
-    setupPopupListeners();
-  }
-  if (VITE_DEV_SERVER_URL) {
-    popupWindow.loadURL("http://localhost:5173/popup.html");
-  } else {
-    popupWindow.loadFile(path.join(RENDERER_DIST, "popup.html"));
-  }
-  popupWindow.on("closed", () => {
-    popupWindow = null;
-  });
+  }), s.listenerCount("close-popup") || h(), a ? t.loadURL("http://localhost:5173/popup.html") : t.loadFile(o.join(f, "popup.html")), t.on("closed", () => {
+    t = null;
+  }));
 }
-function createWindow() {
-  mainWin = new BrowserWindow({
+function d() {
+  const r = process.platform === "win32" ? o.join(process.env.VITE_PUBLIC, "electron-vite.ico") : o.join(process.env.VITE_PUBLIC, "electron-vite.png");
+  e = new c({
     width: 1280,
     height: 720,
-    show: true,
-    kiosk: false,
-    alwaysOnTop: false,
-    fullscreen: false,
-    autoHideMenuBar: true,
-    frame: true,
-    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    show: !0,
+    kiosk: !1,
+    alwaysOnTop: !1,
+    fullscreen: !1,
+    autoHideMenuBar: !0,
+    frame: !0,
+    icon: r,
     webPreferences: {
-      preload: path.join(__dirname, "preload.mjs")
+      preload: o.join(u, "preload.mjs")
     }
-  });
-  mainWin.webContents.on("did-finish-load", () => {
-    mainWin == null ? void 0 : mainWin.webContents.send(
+  }), e.webContents.on("did-finish-load", () => {
+    e == null || e.webContents.send(
       "main-process-message",
       (/* @__PURE__ */ new Date()).toLocaleString()
     );
-  });
-  mainWin.on("show", () => {
-    if (popupInterval) {
-      clearInterval(popupInterval);
-      popupInterval = null;
-    }
-  });
-  if (VITE_DEV_SERVER_URL) {
-    mainWin.loadURL(VITE_DEV_SERVER_URL);
-  } else {
-    mainWin.loadFile(path.join(RENDERER_DIST, "index.html"));
-  }
+  }), e.on("show", () => {
+    l && (clearInterval(l), l = null);
+  }), a ? e.loadURL(a) : e.loadFile(o.join(f, "index.html"));
 }
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-    mainWin = null;
-  }
+n.on("window-all-closed", () => {
+  process.platform !== "darwin" && (n.quit(), e = null);
 });
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+n.on("activate", () => {
+  c.getAllWindows().length === 0 && d();
 });
-app.whenReady().then(() => {
-  createWindow();
-  createTray(path.join(process.env.VITE_PUBLIC, "electron-vite.png"));
-  setupPopupListeners();
-  ipcMain.handle("get-hostname", () => os.hostname());
-  ipcMain.on("minimize-to-tray", () => {
-    console.log("Llamando minimize-to-tray");
-    mainWin == null ? void 0 : mainWin.hide();
-    restartPopupTimer();
-  });
-  ipcMain.on("restore-from-tray", () => {
-    mainWin == null ? void 0 : mainWin.show();
+n.whenReady().then(() => {
+  d(), b(o.join(process.env.VITE_PUBLIC, "electron-vite.png")), h(), s.handle("get-hostname", () => I.hostname()), s.on("minimize-to-tray", () => {
+    console.log("Llamando minimize-to-tray"), e == null || e.hide(), w();
+  }), s.on("restore-from-tray", () => {
+    e == null || e.show();
   });
 });
 export {
-  MAIN_DIST,
-  RENDERER_DIST,
-  VITE_DEV_SERVER_URL
+  O as MAIN_DIST,
+  f as RENDERER_DIST,
+  a as VITE_DEV_SERVER_URL
 };

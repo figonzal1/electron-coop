@@ -36,7 +36,7 @@ function setupPopupListeners() {
   // Limpiar cualquier listener previo para evitar duplicados
   ipcMain.removeAllListeners("close-popup");
 
-  ipcMain.on("close-popup", (event, { closedByUser }) => {
+  ipcMain.on("close-popup", (_, { closedByUser }) => {
     console.log(`Popup cerrado por ${closedByUser ? "usuario" : "timeout"}`);
     closePopup();
 
@@ -138,6 +138,11 @@ function createPopup() {
 }
 
 function createWindow() {
+
+  const iconPath = process.platform === 'win32' 
+  ? path.join(process.env.VITE_PUBLIC, 'electron-vite.ico')
+  : path.join(process.env.VITE_PUBLIC, 'electron-vite.png');
+
   mainWin = new BrowserWindow({
     width: 1280,
     height: 720,
@@ -147,7 +152,7 @@ function createWindow() {
     fullscreen: false,
     autoHideMenuBar: true,
     frame: true,
-    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
     },
