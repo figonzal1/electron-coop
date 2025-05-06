@@ -31,18 +31,48 @@ let mainWin: BrowserWindow | null;
 let tray: Tray | null = null;
 let popupWindow: BrowserWindow | null = null;
 let popupInterval: NodeJS.Timeout | null = null;
-let popupTimerActive = false;
+
+function setupPopupListeners() {
+  // Limpiar cualquier listener previo para evitar duplicados
+  ipcMain.removeAllListeners("close-popup");
+
+  ipcMain.on("close-popup", (event, { closedByUser }) => {
+    console.log(`Popup cerrado por ${closedByUser ? "usuario" : "timeout"}`);
+    closePopup();
+
+    if (!mainWin?.isVisible()) {
+      restartPopupTimer();
+    }
+
+    if (!closedByUser) {
+      mainWin?.show();
+    }
+  });
+}
+
+function closePopup() {
+  if (popupWindow) {
+    popupWindow.close();
+    popupWindow = null;
+  }
+}
 
 function restartPopupTimer() {
   console.log("Restarting popup timer");
 
-  if (popupInterval) clearInterval(popupInterval);
+  if (popupInterval) {
+    clearInterval(popupInterval);
+    popupInterval = null;
+  }
 
-  popupInterval = setInterval(() => {
-    if (!popupWindow) {
-      //createPopup()
-    }
-  }, 1000 * 60 * 1); // cada 1 minuto
+  if (!mainWin?.isVisible()) {
+    popupInterval = setInterval(() => {
+      if (!popupWindow && !mainWin?.isVisible()) {
+        // Doble verificación
+        createPopup();
+      }
+    }, 1000 * 60 * 1); // cada 1 minuto
+  }
 }
 
 function createTray(iconPath: string) {
@@ -76,8 +106,47 @@ function createTray(iconPath: string) {
   });
 }
 
+function createPopup() {
+  if (popupWindow) return; // ya está activa
+
+  popupWindow = new BrowserWindow({
+    width: 400,
+    height: 200,
+    fullscreen: false,
+    alwaysOnTop: true,
+    frame: false,
+    skipTaskbar: false,
+    kiosk: false,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.mjs"),
+    },
+  });
+
+  if (!ipcMain.listenerCount("close-popup")) {
+    setupPopupListeners();
+  }
+
+  if (VITE_DEV_SERVER_URL) {
+    popupWindow.loadURL("http://localhost:5173/popup.html");
+  } else {
+    popupWindow.loadFile(path.join(RENDERER_DIST, "popup.html"));
+  }
+
+  popupWindow.on("closed", () => {
+    popupWindow = null;
+  });
+}
+
 function createWindow() {
   mainWin = new BrowserWindow({
+    width: 1280,
+    height: 720,
+    show: true,
+    kiosk: false,
+    alwaysOnTop: false,
+    fullscreen: false,
+    autoHideMenuBar: true,
+    frame: true,
     icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
@@ -92,10 +161,16 @@ function createWindow() {
     );
   });
 
+  mainWin.on("show", () => {
+    if (popupInterval) {
+      clearInterval(popupInterval);
+      popupInterval = null;
+    }
+  });
+
   if (VITE_DEV_SERVER_URL) {
     mainWin.loadURL(VITE_DEV_SERVER_URL);
   } else {
-    // mainWin.loadFile('dist/index.html')
     mainWin.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
 }
@@ -121,6 +196,8 @@ app.on("activate", () => {
 app.whenReady().then(() => {
   createWindow();
   createTray(path.join(process.env.VITE_PUBLIC, "electron-vite.png"));
+
+  setupPopupListeners();
 
   ipcMain.handle("get-hostname", () => os.hostname());
 
